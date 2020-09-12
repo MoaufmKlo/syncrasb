@@ -6,7 +6,15 @@ module.exports = function (discord, client, msg, args, cmd) {
         if(msg.member.hasPermission("ADMINISTRATOR")) {
             if(msg.guild.member(client.user).hasPermission("BAN_MEMBERS")) {
                 got("https://www.rasb.xyz/api/bans").then((res) => {
-                    const bans = JSON.parse(res.body).discord;
+                    const allBans = JSON.parse(res.body).discord;
+                    var bans = [];
+
+                    // Remove double bans
+                    allBans.forEach(function(ban, i) {
+                        if(!bans.includes(ban.id)) {
+                            bans.push(ban.id);
+                        }
+                    });
 
                     msg.channel.send(new discord.MessageEmbed()
                         .setTitle("Almost there")
@@ -20,14 +28,21 @@ module.exports = function (discord, client, msg, args, cmd) {
                                     .setTitle("Syncing")
                                     .setDescription(`Time Left (estimate): \`${Math.round(bans.length*2/60)}min\`\nProgress: \`0/${bans.length} bans\``)
                                     .setFooter("We are not affiliated with RASB.")).then(function(progressMsg) {
-                                        bans.forEach((user, i) => {
+                                        bans.forEach((id, i) => {
                                             setTimeout(() => {
-                                                msg.guild.members.ban(user.id, {days: 0, reason: `Unofficial RASB Synchronization (triggered by ${msg.author.id})`}).catch(() => {});
-
-                                                progressMsg.edit(new discord.MessageEmbed()
-                                                    .setTitle("Syncing")
-                                                    .setDescription(`Time Left (estimate): \`${Math.round((bans.length-i-1)*2/60)}min\`\nProgress: \`${(i+1)}/${bans.length} bans\``)
-                                                    .setFooter("We are not affiliated with RASB."));
+                                                msg.guild.members.ban(id, {days: 0, reason: `Unofficial RASB Synchronization (triggered by ${msg.author.id})`}).catch(() => {});
+                                                
+                                                if(i+1 >= bans.length) {
+                                                    progressMsg.edit(new discord.MessageEmbed()
+                                                        .setTitle("Bans synced")
+                                                        .setDescription(`\`${bans.length} bans\` have been synchronized.`)
+                                                        .setFooter("We are not affiliated with RASB."));
+                                                } else {
+                                                    progressMsg.edit(new discord.MessageEmbed()
+                                                        .setTitle("Syncing")
+                                                        .setDescription(`Time Left (estimate): \`${Math.round((bans.length-i-1)*2/60)}min\`\nProgress: \`${(i+1)}/${bans.length} bans\``)
+                                                        .setFooter("We are not affiliated with RASB."));
+                                                }
                                             }, i * 2000);
                                         });
                                     });
